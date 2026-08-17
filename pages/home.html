@@ -119,10 +119,10 @@
                 <p>Standard typing test with customizable modes and personal bests.</p>
             </a>
 
-            <div class="mode-card" id="card-practice" onclick="handleModeClick('practice')">
-                <i class="fa-solid fa-dumbbell"></i>
-                <h2>Practice</h2>
-                <p>Sharpen your speed with infinite typing and live combo tracking.</p>
+            <div class="mode-card" id="card-spellingbee" onclick="handleModeClick('spellingbee')">
+                <i class="fa-solid fa-spell-check"></i>
+                <h2>Spelling Bee</h2>
+                <p>"Your word is..." — type it as fast as you can. No time limit, no wpm cap.</p>
             </div>
 
             <div class="mode-card" id="card-ranked" onclick="handleModeClick('ranked')">
@@ -374,8 +374,8 @@
         }
 
         function handleModeClick(mode) {
-            if (mode === 'practice') {
-                window.location.href = 'practice/home.html';
+            if (mode === 'spellingbee') {
+                window.location.href = 'singleplayer/home.html?mode=spelling_bee';
             } else if (mode === 'ranked') {
                 openRankedModal();
             }
