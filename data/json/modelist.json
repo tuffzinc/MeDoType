@@ -55,15 +55,15 @@
         "script": ""
     },
     {
-        "id": "single",
-        "label": "Single",
-        "type": "words",
-        "value": 1,
+        "id": "spelling_bee",
+        "label": "Spelling Bee",
+        "type": "endless",
+        "value": 0,
         "wordpool": "../data/json/wordlists/wordlistsingle.json",
         "renderCount": 1,
-        "icon": "fa-bolt",
+        "icon": "fa-spell-check",
         "isSaved": true,
-        "script": ""
+        "script": "spelling_bee"
     },
     {
         "id": "sudden_death",
