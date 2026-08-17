@@ -97,6 +97,36 @@
         #restart-btn:hover { opacity: 0.9; transform: translateY(-2px); }
         .hidden { visibility: hidden; opacity: 0; }
 
+        /* Spelling Bee Mode */
+        #spelling-bee-prompt {
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-faded);
+            margin-bottom: 0.9rem;
+            opacity: 0.85;
+        }
+        #spelling-bee-prompt.flash { animation: spellingPromptPulse 0.35s ease; }
+        @keyframes spellingPromptPulse {
+            0% { opacity: 0.15; transform: translateY(-6px); }
+            100% { opacity: 0.85; transform: translateY(0); }
+        }
+        #word-container .word.spelling-word { font-size: 2.7rem; font-weight: 500; }
+        #spelling-bee-hint {
+            margin-top: 1.2rem;
+            font-size: 0.78rem;
+            color: var(--text-faded);
+        }
+        #spelling-bee-hint kbd {
+            background: var(--card-bg);
+            padding: 3px 9px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.08);
+            font-family: var(--font);
+            font-weight: 600;
+        }
+
         .mode-settings-container { display: flex; justify-content: center; margin-bottom: 3rem; position: relative; z-index: 50; }
         .mode-group { display: flex; background: var(--card-bg); padding: 4px; border-radius: 10px; gap: 2px; align-items: center; }
         .mode-item { padding: 8px 16px; font-size: 0.85rem; font-weight: 600; color: var(--text-faded); cursor: pointer; border-radius: 8px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
@@ -144,9 +174,13 @@
             </div>
         </div>
 
+        <p id="spelling-bee-prompt" class="hidden">Your word is...</p>
+
         <div id="typing-viewport">
             <div id="word-container"></div>
         </div>
+
+        <p id="spelling-bee-hint" class="hidden">Press <kbd>Esc</kbd> anytime to finish and see your results — no time limit, go as fast as you can</p>
 
         <div id="results-screen">
             <p class="stat-label">Words Per Minute</p>
