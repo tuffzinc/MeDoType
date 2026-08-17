@@ -19,6 +19,11 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
     let currentCombo = 0;
     let wpmTimeline = [];
 
+    // Spelling Bee mode state
+    let wordsSpelled = 0;
+    let lastSpellingWord = null;
+    let spellingAdvanceTimeout = null;
+
     const container = document.getElementById('word-container');
     const statVal = document.getElementById('stat-val');
     const wpmVal = document.getElementById('wpm-val');
@@ -38,7 +43,12 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
             if(!response.ok) throw new Error("File not found");
             availableModes = await response.json();
             buildNav();
-            if (availableModes.length > 0) selectMode(availableModes[0]);
+
+            const requestedId = new URLSearchParams(window.location.search).get('mode');
+            const requestedMode = requestedId ? availableModes.find(m => m.id === requestedId) : null;
+
+            if (requestedMode) selectMode(requestedMode);
+            else if (availableModes.length > 0) selectMode(availableModes[0]);
         } catch (e) {
             console.error(e);
             statVal.innerText = "Err";
@@ -166,6 +176,8 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
 
     function resetGame() {
         clearInterval(timerInterval);
+        clearTimeout(spellingAdvanceTimeout);
+        spellingAdvanceTimeout = null;
         isStarted = false;
         isFinishing = false;
         activeWordIdx = 0;
@@ -177,6 +189,8 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
         keyPressTimestamps = [];
         wpmTimeline = []; 
         currentCombo = 0;
+        wordsSpelled = 0;
+        lastSpellingWord = null;
         comboVal.innerText = "0";
         wpmVal.innerText = "0";
 
@@ -187,13 +201,27 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
         let targetIcon = activeModeConfig.icon || (activeModeConfig.type === 'time' ? 'fa-clock' : 'fa-font');
         modeIcon.className = `fa-solid ${targetIcon}`;
 
+        const isSpellingBee = activeModeConfig.script === 'spelling_bee';
+        container.classList.toggle('spelling-bee-mode', isSpellingBee);
+        const promptEl = document.getElementById('spelling-bee-prompt');
+        const hintEl = document.getElementById('spelling-bee-hint');
+        if (promptEl) promptEl.classList.toggle('hidden', !isSpellingBee);
+        if (hintEl) hintEl.classList.toggle('hidden', !isSpellingBee);
+
         if (activeModeConfig.type === 'time') {
             statVal.innerText = activeModeConfig.value;
+        } else if (isSpellingBee) {
+            statVal.innerText = "0";
         } else {
             statVal.innerText = `0 / ${activeModeConfig.value}`;
         }
 
         if (!wordsList || wordsList.length === 0) return;
+
+        if (isSpellingBee) {
+            renderSpellingWord();
+            return;
+        }
 
         const count = activeModeConfig.renderCount || 50;
         const shuffled = [...wordsList].sort(() => Math.random() - 0.5).slice(0, count);
@@ -205,6 +233,54 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
         `).join('');
 
         updateCaret();
+    }
+
+    // Picks a fresh random word and renders it as the single active "your word is..." target
+    function renderSpellingWord() {
+        activeWordIdx = 0;
+        activeCharIdx = 0;
+
+        let w = wordsList[Math.floor(Math.random() * wordsList.length)];
+        if (wordsList.length > 1) {
+            while (w === lastSpellingWord) {
+                w = wordsList[Math.floor(Math.random() * wordsList.length)];
+            }
+        }
+        lastSpellingWord = w;
+
+        container.innerHTML = `<span class="word spelling-word">${w.split('').map(c => `<span class="letter">${c}</span>`).join('')}</span>`;
+        updateCaret();
+
+        const promptEl = document.getElementById('spelling-bee-prompt');
+        if (promptEl) {
+            promptEl.classList.remove('flash');
+            void promptEl.offsetWidth; // restart animation
+            promptEl.classList.add('flash');
+        }
+    }
+
+    // Schedules an automatic move to the next word once the current one has been fully typed
+    function scheduleNextSpellingWord() {
+        clearTimeout(spellingAdvanceTimeout);
+        spellingAdvanceTimeout = setTimeout(() => {
+            spellingAdvanceTimeout = null;
+            nextSpellingWord();
+        }, 200);
+    }
+
+    // Advances to the next word immediately (used by the auto-advance timer and manual space-skip)
+    function nextSpellingWord() {
+        if (!activeModeConfig || activeModeConfig.script !== 'spelling_bee') return;
+        clearTimeout(spellingAdvanceTimeout);
+        spellingAdvanceTimeout = null;
+
+        const currentWord = container.querySelector('.word');
+        const letters = currentWord ? currentWord.querySelectorAll('.letter') : [];
+        const wasPerfect = currentWord && activeCharIdx > 0 && activeCharIdx === letters.length && !currentWord.querySelector('.letter.incorrect');
+        if (wasPerfect) wordsSpelled++;
+
+        statVal.innerText = wordsSpelled;
+        renderSpellingWord();
     }
 
     function updateLiveStats() {
@@ -230,6 +306,11 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
         if (results.style.display === 'block' || !activeModeConfig || isFinishing) return;
         
         if (e.key === 'Tab') { e.preventDefault(); resetGame(); return; }
+        if (e.key === 'Escape' && activeModeConfig.script === 'spelling_bee') {
+            e.preventDefault();
+            if (isStarted) finish();
+            return;
+        }
         if (e.key.length !== 1 && e.key !== 'Backspace' && e.key !== ' ') return;
         if (e.key === ' ') e.preventDefault();
 
@@ -246,6 +327,7 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
 
         if (e.key === 'Backspace') {
             if (activeModeConfig.script === 'sudden_death') return;
+            if (activeModeConfig.script === 'spelling_bee') clearTimeout(spellingAdvanceTimeout);
 
             if (activeCharIdx > 0) {
                 activeCharIdx--;
@@ -259,6 +341,10 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
                 if (activeModeConfig.type === 'words') statVal.innerText = `${activeWordIdx} / ${activeModeConfig.value}`;
             }
         } else if (e.key === ' ') {
+            if (activeModeConfig.script === 'spelling_bee') {
+                if (activeCharIdx > 0) nextSpellingWord();
+                return;
+            }
             if (activeCharIdx > 0) {
                 if (activeModeConfig.type === 'words' && activeWordIdx + 1 >= activeModeConfig.value) {
                     finish(); return;
@@ -290,6 +376,10 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
                     }
                 }
                 activeCharIdx++;
+
+                if (activeModeConfig.script === 'spelling_bee' && activeCharIdx === letters.length) {
+                    scheduleNextSpellingWord();
+                }
 
                 if (activeModeConfig.type === 'words' && activeWordIdx === activeModeConfig.value - 1 && activeCharIdx === letters.length) {
                     finish();
@@ -340,7 +430,8 @@ const SB_URL = 'https://tzaowqeofmwfnprrfwat.supabase.co';
                 let variance = intervals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / intervals.length;
                 let stdDev = Math.sqrt(variance);
 
-                if (stdDev < 5 || wpm > 500) {
+                const wpmCapApplies = activeModeConfig.script !== 'spelling_bee';
+                if (stdDev < 5 || (wpmCapApplies && wpm > 500)) {
                     isBot = true;
                 }
             }
